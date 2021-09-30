@@ -49,8 +49,8 @@ setup(
 	ext_modules=[CppExtension(
 		name='ngransac', 
 		sources=['ngransac.cpp','thread_rand.cpp'],
-		#include_dirs=[opencv_inc_dir],
-		#library_dirs=[opencv_lib_dir],
+		include_dirs=[opencv_inc_dir],
+		library_dirs=[opencv_lib_dir],
 		libraries=['opencv_core','opencv_calib3d'],
 		extra_compile_args=['-fopenmp']
 		)],		
