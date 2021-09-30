@@ -444,7 +444,7 @@ def rb_fitting(bgmask_pred,mask_pred,idepth,flow,ent,K0,K1,bl,parallax_th=2,mono
     print('[BG Fitting] mean pp/flow: %.1f/%.1f px'%(parallax_mag[bgmask_pred].mean(), flow_mag[bgmask_pred].mean()))
 
     reg_flow_P = triangulation(idepth, x0, y0, bl=bl, fl = K0[0,0], cx = K0[0,2], cy = K0[1,2])[:3]
-    if parallax_mag[bgmask_pred].mean()<parallax_th:
+    if False and parallax_mag[bgmask_pred].mean()<parallax_th:
         # static camera
         print("static")
         scene_type = 'H'
@@ -483,7 +483,7 @@ def rb_fitting(bgmask_pred,mask_pred,idepth,flow,ent,K0,K1,bl,parallax_th=2,mono
                 print('[FG-%03d Fitting] center/mean pp/flow: (%d,%d)/%.1f/%.1f px'%(i,
                  center_coord[0], center_coord[1], parallax_mag[obj_mask].mean(), 
                  flow_mag.flatten()[obj_mask].mean()))
-                if parallax_mag[obj_mask].mean()<parallax_th: RTs.append(None);continue
+                if False and parallax_mag[obj_mask].mean()<parallax_th: RTs.append(None);continue
             else:
                 R01x = quatpred[i].T
                 T01_cx = -quatpred[i].T.dot(tranpred[i][:,None])[:,0]
