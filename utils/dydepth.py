@@ -340,30 +340,32 @@ def pose_estimate(K0,K1,hp0,hp1,strict_mask,rot,th=0.0001):
     #num_samp = min(30000,tmphp0.shape[1])
     num_samp = min(3000,tmphp0.shape[1])
     submask = np.random.choice(range(tmphp0.shape[1]), num_samp)
-    tmphp0 = tmphp0[:,submask]
-    tmphp1 = tmphp1[:,submask]
+    if num_samp > 0:
+        submask = np.random.choice(range(tmphp0.shape[1]), num_samp)
+        tmphp0 = tmphp0[:, submask]
+        tmphp1 = tmphp1[:, submask]
     
-    rotx,transx,Ex = F_ngransac(torch.Tensor(tmphp0.T[np.newaxis]).cuda(),
-                                torch.Tensor(tmphp1.T[np.newaxis]).cuda(),
-                                torch.Tensor(K0[np.newaxis]).cuda(),
-                                False,0,
-                                Kn = torch.Tensor(K1[np.newaxis]).cuda())
-    R01 = cv2.Rodrigues(np.asarray(rotx[0]))[0]
-    T01 = np.asarray(transx[0])
-    E =  np.asarray(Ex[0])
-#    _,R01,T01,_ = cv2.recoverPose(E.astype(float), tmphp0[:2].T, tmphp1[:2].T, K0)  # RT are 0->1 points transform
-#    T01 = T01[:,0]
-#    R01=R01.T
-#    T01=-R01.dot(T01)  # now are 1->0 points transform
+        rotx,transx,Ex = F_ngransac(torch.Tensor(tmphp0.T[np.newaxis]).cuda(),
+                                    torch.Tensor(tmphp1.T[np.newaxis]).cuda(),
+                                    torch.Tensor(K0[np.newaxis]).cuda(),
+                                    False,0,
+                                    Kn = torch.Tensor(K1[np.newaxis]).cuda())
+        R01 = cv2.Rodrigues(np.asarray(rotx[0]))[0]
+        T01 = np.asarray(transx[0])
+        E =  np.asarray(Ex[0])
+    #    _,R01,T01,_ = cv2.recoverPose(E.astype(float), tmphp0[:2].T, tmphp1[:2].T, K0)  # RT are 0->1 points transform
+    #    T01 = T01[:,0]
+    #    R01=R01.T
+    #    T01=-R01.dot(T01)  # now are 1->0 points transform
 
-    R1, R2, T = cv2.decomposeEssentialMat(E) 
-    for rott in [(R1,T),(R2,T),(R1,-T),(R2,-T)]:
-        if testEss(K0,K1,rott[0],rott[1],tmphp0, tmphp1):
-            R01=rott[0].T
-            T01=-R01.dot(rott[1][:,0])
-    if not 'T01' in locals():
-        T01 = np.asarray([0,0,1])
-        R01 = np.eye(3)
+        R1, R2, T = cv2.decomposeEssentialMat(E)
+        for rott in [(R1,T),(R2,T),(R1,-T),(R2,-T)]:
+            if testEss(K0,K1,rott[0],rott[1],tmphp0, tmphp1):
+                R01=rott[0].T
+                T01=-R01.dot(rott[1][:,0])
+        if not 'T01' in locals():
+            T01 = np.asarray([0,0,1])
+            R01 = np.eye(3)
 
 #    E, maskk = cv2.findEssentialMat(np.linalg.inv(K0).dot(hp0[:,strict_mask])[:2].T, 
 #                                    np.linalg.inv(K1).dot(hp1[:,strict_mask])[:2].T, np.eye(3),
@@ -383,6 +385,11 @@ def pose_estimate(K0,K1,hp0,hp1,strict_mask,rot,th=0.0001):
 #        T01 = np.asarray([0,0,1])
 #        R01 = np.eye(3)
 #    T01t = T01.copy()
+
+    else:
+        T01 = np.asarray([0, 0, 1])
+        R01 = np.eye(3)
+        E = None
 
     # compensate R
     H01 = K0.dot(R01).dot(np.linalg.inv(K1)) # plane at infinity
@@ -452,21 +459,24 @@ def rb_fitting(bgmask_pred,mask_pred,idepth,flow,ent,K0,K1,bl,parallax_th=2,mono
     else:
         scene_type = 'F'    
         # determine scale of translation / reconstruction
-        aligned_mask,T01_c,ranked_p = evaluate_tri(T01,R01,K0,K1,hp0,hp1,idepth,ent,bl,inlier_th=0.01,select_th=1.2,valid_mask=valid_mask)
-        if not mono:
-             # PnP refine
-             aligned_mask[ranked_p[50000:]]=False
-             tmp = valid_mask.copy()
-             tmp[tmp] = aligned_mask
-             aligned_mask = tmp
-             _,rvec, T01=cv2.solvePnP(reg_flow_P.T[aligned_mask.flatten(),np.newaxis],
-                                        hp1[:2].T[aligned_mask.flatten(),np.newaxis], K0, 0, 
-                                        flags=cv2.SOLVEPNP_DLS)
-             _,rvec, T01,=cv2.solvePnP(reg_flow_P.T[aligned_mask,np.newaxis],
-                                     hp1[:2].T[aligned_mask,np.newaxis], K0, 0,rvec, T01,useExtrinsicGuess=True, 
-                                     flags=cv2.SOLVEPNP_ITERATIVE)
-             R01 = cv2.Rodrigues(rvec)[0].T
-             T01_c = -R01.dot(T01)[:,0]
+        if valid_mask.sum() > 0:
+            aligned_mask,T01_c,ranked_p = evaluate_tri(T01,R01,K0,K1,hp0,hp1,idepth,ent,bl,inlier_th=0.01,select_th=1.2,valid_mask=valid_mask)
+            if not mono:
+                 # PnP refine
+                 aligned_mask[ranked_p[50000:]]=False
+                 tmp = valid_mask.copy()
+                 tmp[tmp] = aligned_mask
+                 aligned_mask = tmp
+                 _,rvec, T01=cv2.solvePnP(reg_flow_P.T[aligned_mask.flatten(),np.newaxis],
+                                            hp1[:2].T[aligned_mask.flatten(),np.newaxis], K0, 0,
+                                            flags=cv2.SOLVEPNP_DLS)
+                 _,rvec, T01,=cv2.solvePnP(reg_flow_P.T[aligned_mask,np.newaxis],
+                                         hp1[:2].T[aligned_mask,np.newaxis], K0, 0,rvec, T01,useExtrinsicGuess=True,
+                                         flags=cv2.SOLVEPNP_ITERATIVE)
+                 R01 = cv2.Rodrigues(rvec)[0].T
+                 T01_c = -R01.dot(T01)[:,0]
+        else:
+            T01_c = T01
 
     RTs = []
     for i in range(0,mask_pred.max()):    
