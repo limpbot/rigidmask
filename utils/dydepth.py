@@ -461,20 +461,23 @@ def rb_fitting(bgmask_pred,mask_pred,idepth,flow,ent,K0,K1,bl,parallax_th=2,mono
         # determine scale of translation / reconstruction
         if valid_mask.sum() > 0:
             aligned_mask,T01_c,ranked_p = evaluate_tri(T01,R01,K0,K1,hp0,hp1,idepth,ent,bl,inlier_th=0.01,select_th=1.2,valid_mask=valid_mask)
-            if not mono:
-                 # PnP refine
-                 aligned_mask[ranked_p[50000:]]=False
-                 tmp = valid_mask.copy()
-                 tmp[tmp] = aligned_mask
-                 aligned_mask = tmp
-                 _,rvec, T01=cv2.solvePnP(reg_flow_P.T[aligned_mask.flatten(),np.newaxis],
-                                            hp1[:2].T[aligned_mask.flatten(),np.newaxis], K0, 0,
-                                            flags=cv2.SOLVEPNP_DLS)
-                 _,rvec, T01,=cv2.solvePnP(reg_flow_P.T[aligned_mask,np.newaxis],
-                                         hp1[:2].T[aligned_mask,np.newaxis], K0, 0,rvec, T01,useExtrinsicGuess=True,
-                                         flags=cv2.SOLVEPNP_ITERATIVE)
-                 R01 = cv2.Rodrigues(rvec)[0].T
-                 T01_c = -R01.dot(T01)[:,0]
+            if aligned_mask is not None and aligned_mask.sum() > 0:
+                if not mono:
+                     # PnP refine
+                     aligned_mask[ranked_p[50000:]]=False
+                     tmp = valid_mask.copy()
+                     tmp[tmp] = aligned_mask
+                     aligned_mask = tmp
+                     _,rvec, T01=cv2.solvePnP(reg_flow_P.T[aligned_mask.flatten(),np.newaxis],
+                                                hp1[:2].T[aligned_mask.flatten(),np.newaxis], K0, 0,
+                                                flags=cv2.SOLVEPNP_DLS)
+                     _,rvec, T01,=cv2.solvePnP(reg_flow_P.T[aligned_mask,np.newaxis],
+                                             hp1[:2].T[aligned_mask,np.newaxis], K0, 0,rvec, T01,useExtrinsicGuess=True,
+                                             flags=cv2.SOLVEPNP_ITERATIVE)
+                     R01 = cv2.Rodrigues(rvec)[0].T
+                     T01_c = -R01.dot(T01)[:,0]
+            else:
+                T01_c = T01
         else:
             T01_c = T01
 
