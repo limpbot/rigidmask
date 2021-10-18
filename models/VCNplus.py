@@ -343,7 +343,7 @@ class VCN(nn.Module):
 
         #from midas.midas_net import MidasNet
         #self.midas = MidasNet('/data/gengshay/midas.pt', non_negative=True)
-        self.midas = torch.hub.load("intel-isl/MiDaS", "MiDaS")
+        #self.midas = torch.hub.load("intel-isl/MiDaS", "MiDaS")
         
         # detection branch
         from ..models.det import create_model, load_model, save_model
